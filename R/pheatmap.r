@@ -222,7 +222,7 @@ draw_colnames = function(coln, gaps, ...){
     coord = find_coordinates(length(coln), gaps)
     x = coord$coord - 0.5 * coord$size
     
-    res = textGrob(coln, x = x, y = unit(1, "npc") - unit(3, "bigpts"), vjust = 0.5, hjust = 0, rot = 90, gp = gpar(...))
+    res = textGrob(coln, x = x, y = unit(1, "npc") - unit(3, "bigpts"), vjust =0.5 , hjust = 1, rot = 90, gp = gpar(...))
     
     return(res)
 }
@@ -320,7 +320,7 @@ draw_annotation_names = function(annotations, fontsize, horizontal){
         x = unit(1, "npc") - y
         y = unit(1, "npc") - a
         
-        res = textGrob(colnames(annotations), x = x, y = y, vjust = 0.5, hjust = 0, rot = 90, gp = gpar(fontsize = fontsize, fontface = 2))
+        res = textGrob(colnames(annotations), x = x, y = y, vjust =0.5 , hjust = 1,  rot = 90, gp = gpar(fontsize = fontsize, fontface = 2))
     }
     
     return(res)

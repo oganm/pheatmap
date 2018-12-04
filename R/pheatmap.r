@@ -237,6 +237,9 @@ draw_rownames = function(rown, gaps, ...){
 }
 
 draw_legend = function(color, breaks, legend, ...){
+    color = color[!is.infinite(breaks)]
+    breaks = breaks[!is.infinite(breaks)]
+    
     height = min(unit(1, "npc"), unit(150, "bigpts"))
     
     legend_pos = (legend - min(breaks)) / (max(breaks) - min(breaks))
@@ -685,7 +688,9 @@ identity2 = function(x, ...){
 #' @param breaks a sequence of numbers that covers the range of values in mat and is one 
 #' element longer than color vector. Used for mapping values to colors. Useful, if needed 
 #' to map certain values to certain colors, to certain values. If value is NA then the 
-#' breaks are calculated automatically.
+#' breaks are calculated automatically. When breaks do not cover tha range of values, 
+#' then any value larger than \code{max(breaks)} will have the largest color and any value 
+#' lower than\code{ min(breaks)} will get the lowest color.
 #' @param border_color color of cell borders on heatmap, use NA if no border should be 
 #' drawn.
 #' @param cellwidth individual cell width in points. If left as NA, then the values 
@@ -769,12 +774,14 @@ identity2 = function(x, ...){
 #' \code{\link{grid.text}}, see \code{\link{gpar}}. 
 #' 
 #' @return 
-#' Invisibly a list of components 
+#' Invisibly a \code{pheatmap} object that is a list with components 
 #' \itemize{
 #'     \item \code{tree_row} the clustering of rows as \code{\link{hclust}} object 
 #'     \item \code{tree_col} the clustering of columns as \code{\link{hclust}} object
 #'     \item \code{kmeans} the kmeans clustering of rows if parameter \code{kmeans_k} was 
 #' specified 
+#'     \item \code{gtable} a \code{\link{gtable}} object containing the heatmap, 
+#'     can be used for combining the heatmap with other plots 
 #' }
 #' 
 #' @author  Raivo Kolde <rkolde@@gmail.com>
@@ -984,15 +991,26 @@ pheatmap = function(mat, color = colorRampPalette(rev(brewer.pal(n = 7, name = "
     if(is.na2(breaks)){
         breaks = generate_breaks(as.vector(mat), length(color))
     }
+    
+    if(!is.infinite(min(breaks))){
+        breaks = c(-Inf, breaks)
+        color = c(color[1], color)
+    }
+    if(!is.infinite(max(breaks))){
+        breaks = c(breaks, Inf)
+        color = c(color, color[length(color)])
+    }
+    non_inf_breaks = breaks[!is.infinite(breaks)]
+    
     if (legend & is.na2(legend_breaks)) {
-        legend = grid.pretty(range(as.vector(breaks)))
+        legend = grid.pretty(range(as.vector(non_inf_breaks)))
         names(legend) = legend
     }
     else if(legend & !is.na2(legend_breaks)){
-        legend = legend_breaks[legend_breaks >= min(breaks) & legend_breaks <= max(breaks)]
+        legend = legend_breaks[legend_breaks >= min(non_inf_breaks) & legend_breaks <= max(non_inf_breaks)]
         
         if(!is.na2(legend_labels)){
-            legend_labels = legend_labels[legend_breaks >= min(breaks) & legend_breaks <= max(breaks)]
+            legend_labels = legend_labels[legend_breaks >= min(non_inf_breaks) & legend_breaks <= max(non_inf_breaks)]
             names(legend) = legend_labels
         }
         else{
@@ -1002,7 +1020,7 @@ pheatmap = function(mat, color = colorRampPalette(rev(brewer.pal(n = 7, name = "
     else {
         legend = NA
     }
-
+    
     mat = scale_colours(mat, col = color, breaks = breaks, na_col = na_col)
     
     # Preparing annotations
@@ -1036,14 +1054,27 @@ pheatmap = function(mat, color = colorRampPalette(rev(brewer.pal(n = 7, name = "
     }
     
     # Draw heatmap
+    pdf(file = NULL)
     gt = heatmap_motor(mat, border_color = border_color, cellwidth = cellwidth, cellheight = cellheight, treeheight_col = treeheight_col, treeheight_row = treeheight_row, tree_col = tree_col, tree_row = tree_row, filename = filename, width = width, height = height, breaks = breaks, color = color, legend = legend, annotation_row = annotation_row, annotation_col = annotation_col, annotation_colors = annotation_colors, annotation_legend = annotation_legend, annotation_names_row = annotation_names_row, annotation_names_col = annotation_names_col, main = main, fontsize = fontsize, fontsize_row = fontsize_row, fontsize_col = fontsize_col, fmat = fmat, fontsize_number = fontsize_number, number_color = number_color, gaps_row = gaps_row, gaps_col = gaps_col, labels_row = labels_row, labels_col = labels_col, ...)
+    dev.off()
     
     if(is.na(filename) & !silent){
         grid.newpage()
         grid.draw(gt)
     }
     
-    invisible(list(tree_row = tree_row, tree_col = tree_col, kmeans = km, gtable = gt))
+    invisible(structure(list(tree_row = tree_row, tree_col = tree_col, kmeans = km, gtable = gt), class = "pheatmap"))
 }
 
 
+#' @method grid.draw pheatmap
+#' @export
+grid.draw.pheatmap <- function(x, recording = TRUE) {
+    grid.draw(x$gtable)
+}
+
+#' @method print pheatmap
+#' @export
+print.pheatmap <- function(x, ...) {
+    grid.draw(x)
+}
